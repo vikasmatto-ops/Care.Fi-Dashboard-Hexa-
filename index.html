@@ -26,9 +26,9 @@ body{font-family:'Inter',sans-serif;background:#f0f2f5;color:#1a1a2e;}
 .sb-logo-sub{font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:1.5px;margin-left:42px;}
 .sb-nav{flex:1;overflow-y:auto;padding:8px 0;}
 .sb-section{padding:14px 10px 6px;font-size:9px;font-weight:600;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:1.5px;}
-.sb-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:7px;margin:2px 6px;cursor:pointer;color:rgba(255,255,255,.45);font-size:13px;font-weight:500;transition:all .15s;}
-.sb-item:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.8);}
-.sb-item.active{background:rgba(124,58,237,.2);color:#fff;}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:7px;margin:2px 6px;cursor:pointer;color:rgba(255,255,255,.6);font-size:13px;font-weight:500;transition:all .15s;background:rgba(255,255,255,.06);}
+.sb-item:hover{background:rgba(255,255,255,.1);color:rgba(255,255,255,.9);}
+.sb-item.active{background:#7c3aed;color:#fff;}
 .sb-badge{margin-left:auto;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;font-family:'JetBrains Mono',monospace;}
 .sb-badge.purple{background:rgba(167,139,250,.2);color:#a78bfa;}
 .sb-badge.red{background:rgba(239,68,68,.2);color:#f87171;}
@@ -220,6 +220,9 @@ table.dtbl tr.overdue-row td{background:#fff5f5;}
       <div class="mob-nav-item" id="mn-n" onclick="showTab('notdone')">
         <div class="mob-nav-icon">&#x26D4;</div><div>Not Done</div>
       </div>
+      <div class="mob-nav-item" id="mn-r" onclick="showTab('rejected')">
+        <div class="mob-nav-icon">&#x1F4C9;</div><div>Rejected</div>
+      </div>
     </div>
   </div>
 
@@ -253,6 +256,11 @@ table.dtbl tr.overdue-row td{background:#fff5f5;}
         <span style="width:18px;text-align:center;">&#x26D4;</span>
         Approved Not Done
         <span class="sb-badge blue" id="badge-notdone">--</span>
+      </div>
+      <div class="sb-item" id="nav-r" onclick="showTab('rejected')">
+        <span style="width:18px;text-align:center;">&#x1F4C9;</span>
+        Rejected Analysis
+        <span class="sb-badge" style="background:rgba(196,181,253,.2);color:#c4b5fd;" id="badge-rejected">--</span>
       </div>
     </div>
     <div class="sb-footer">
@@ -538,6 +546,93 @@ table.dtbl tr.overdue-row td{background:#fff5f5;}
       </div>
     </div>
 
+    <!-- TAB: REJECTED ANALYSIS -->
+    <div id="tab-rejected" class="content hidden">
+      <div class="filter-bar">
+        <span class="filter-lbl">Filter</span><div class="divdr"></div>
+        <select class="sel" id="rj-city" onchange="renderRejected()"><option value="">All Cities</option></select>
+        <select class="sel" id="rj-cat"  onchange="renderRejected()"><option value="">All Categories</option></select>
+        <select class="sel" id="rj-ins"  onchange="renderRejected()"><option value="">All Insurers</option></select>
+        <select class="sel" id="rj-type" onchange="renderRejected()">
+          <option value="">All Rejections</option>
+          <option value="Clinically rejected">Clinically Rejected</option>
+          <option value="Financially rejected">Financially Rejected</option>
+        </select>
+        <button class="btn-clr" onclick="clearFilters('rj')">&#x2715; Reset</button>
+        <div class="divdr"></div>
+        <button class="btn-dl primary" onclick="dlCSV('rejected')">&#x2193; Download</button>
+      </div>
+
+      <!-- KPI strip -->
+      <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);">
+        <div class="kpi red"    style="cursor:default;"><div class="kpi-label">Total Rejected</div><div class="kpi-val" id="rj-total" style="color:#dc2626">--</div><div class="kpi-sub">by Care.fi</div></div>
+        <div class="kpi purple" style="cursor:default;"><div class="kpi-label">Clinically Rejected</div><div class="kpi-val" id="rj-clin"  style="color:#7c3aed">--</div><div class="kpi-sub" id="rj-clin-loss">potential loss</div></div>
+        <div class="kpi amber"  style="cursor:default;"><div class="kpi-label">Financially Rejected</div><div class="kpi-val" id="rj-fin"   style="color:#d97706">--</div><div class="kpi-sub" id="rj-fin-loss">potential loss</div></div>
+        <div class="kpi teal"   style="cursor:default;"><div class="kpi-label">Total Potential Loss (ATS)</div><div class="kpi-val" id="rj-loss"  style="font-size:20px;color:#0d9488">--</div><div class="kpi-sub">net: <span id="rj-net-loss">--</span></div></div>
+      </div>
+
+      <!-- ATS breakdown table -->
+      <div class="panel">
+        <div class="sec-head">
+          <div class="sec-title">Potential Business Loss by Category &mdash; ATS Based</div>
+          <div class="sec-sub">ATS from all approved cases &middot; net after Care.fi 10% fee</div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;min-width:750px;">
+            <thead><tr style="background:#f8fafc;">
+              <th style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;font-weight:700;text-align:left;padding:9px 14px;border-bottom:1px solid #e5e7eb;">Category</th>
+              <th style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#7c3aed;font-weight:700;text-align:right;padding:9px 14px;border-bottom:1px solid #e5e7eb;">Clin. Rejected</th>
+              <th style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#d97706;font-weight:700;text-align:right;padding:9px 14px;border-bottom:1px solid #e5e7eb;">Fin. Rejected</th>
+              <th style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;font-weight:700;text-align:right;padding:9px 14px;border-bottom:1px solid #e5e7eb;">Total</th>
+              <th style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;font-weight:700;text-align:right;padding:9px 14px;border-bottom:1px solid #e5e7eb;">Avg Ticket (Loan)</th>
+              <th style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#d97706;font-weight:700;text-align:right;padding:9px 14px;border-bottom:1px solid #e5e7eb;">Potential Loan Lost</th>
+              <th style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#0d9488;font-weight:700;text-align:right;padding:9px 14px;border-bottom:1px solid #e5e7eb;">Potential Net Lost</th>
+              <th style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;font-weight:700;text-align:left;padding:9px 14px;border-bottom:1px solid #e5e7eb;">Loss Bar</th>
+            </tr></thead>
+            <tbody id="rj-ats-tbody"></tbody>
+            <tfoot id="rj-ats-tfoot"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="two-col">
+        <div class="panel"><div class="sec-head"><div class="sec-title">Rejection Split by Type</div></div><div class="chart-box"><canvas id="rj-type-chart"></canvas></div></div>
+        <div class="panel"><div class="sec-head"><div class="sec-title">Rejections by City</div></div><div class="chart-box"><canvas id="rj-city-chart"></canvas></div></div>
+      </div>
+
+      <!-- Case table -->
+      <div class="tbl-wrap">
+        <div class="tbl-head">
+          <div><div class="tbl-title">Rejected Cases Detail</div><div class="tbl-cnt" id="rj-cnt">-- records</div></div>
+        </div>
+        <div class="tbl-scroll">
+          <table class="dtbl">
+            <thead><tr>
+              <th onclick="sortRj('patient')">Patient &#x21D5;</th>
+              <th onclick="sortRj('hospital')">Hospital &#x21D5;</th>
+              <th onclick="sortRj('city')">City &#x21D5;</th>
+              <th onclick="sortRj('insurer')">Insurer &#x21D5;</th>
+              <th onclick="sortRj('category')">Category &#x21D5;</th>
+              <th onclick="sortRj('status')">Rejection Type &#x21D5;</th>
+              <th onclick="sortRj('posted')">Posted Date &#x21D5;</th>
+              <th onclick="sortRj('bill')">Bill Amt &#x21D5;</th>
+              <th>ATS Loan</th>
+              <th>ATS Net</th>
+            </tr></thead>
+            <tbody id="rj-tbody"></tbody>
+          </table>
+        </div>
+        <div class="pg">
+          <div id="rj-pg-info">Page 1 of 1</div>
+          <div class="pg-btns">
+            <button class="pg-btn" id="rj-prev" onclick="changePg('rj',-1)" disabled>&#x2190;</button>
+            <button class="pg-btn" id="rj-next" onclick="changePg('rj',1)">&#x2192;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -563,8 +658,9 @@ const ATS={
 };
 
 // STATE
-let ALL=[], ovFiltered=[], pyFiltered=[], dtFiltered=[], ndFiltered=[];
-let ovPage=1,pyPage=1,dtPage=1,ndPage=1;
+let ALL=[], ovFiltered=[], pyFiltered=[], dtFiltered=[], ndFiltered=[], rjFiltered=[];
+let rjSort='category',rjAsc=false;
+let ovPage=1,pyPage=1,dtPage=1,ndPage=1,rjPage=1;
 let ovSort='bill',ovAsc=false,pySort='days_since_dispatch',pyAsc=false;
 let dtSort='dispatch_tat',dtAsc=false,ndSort='posted',ndAsc=false;
 const PS=50;
@@ -636,6 +732,8 @@ function init(rows){
   document.getElementById('badge-overdue').textContent=overdue.length;
   document.getElementById('badge-dispatch').textContent=dispatched.filter(r=>r._tatClass==='bad').length;
   document.getElementById('badge-notdone').textContent=notDone.length;
+  const rejected=ALL.filter(r=>r.status==='Clinically rejected'||r.status==='Financially rejected');
+  const brj=document.getElementById('badge-rejected');if(brj)brj.textContent=rejected.length;
 
   // Populate all filters
   const cities=uniq(ALL,'city');
@@ -653,6 +751,15 @@ function init(rows){
   // Hospital filter for dispatch tab
   const dh=document.getElementById('dt-hosp');
   if(dh){while(dh.options.length>1)dh.remove(1);hosps.forEach(v=>dh.add(new Option(v.length>40?v.slice(0,40)+'…':v,v)));}
+  // Rejected tab filters
+  ['rj'].forEach(pfx=>{
+    const ce=document.getElementById(pfx+'-city');
+    const ca=document.getElementById(pfx+'-cat');
+    const ci=document.getElementById(pfx+'-ins');
+    if(ce){while(ce.options.length>1)ce.remove(1);cities.forEach(v=>ce.add(new Option(v,v)));}
+    if(ca){while(ca.options.length>1)ca.remove(1);cats.forEach(v=>ca.add(new Option(v,v)));}
+    if(ci){while(ci.options.length>1)ci.remove(1);ins.forEach(v=>ci.add(new Option(v.length>35?v.slice(0,35)+'…':v,v)));}
+  });
 
   renderOverview();
   renderPayment();
@@ -1122,42 +1229,169 @@ function changePg(pfx,dir){
   if(pfx==='ov'){arr=ovFiltered;page=ovPage;setPage=v=>ovPage=v;}
   else if(pfx==='py'){arr=pyFiltered;page=pyPage;setPage=v=>pyPage=v;}
   else if(pfx==='dt'){arr=dtFiltered;page=dtPage;setPage=v=>dtPage=v;}
-  else{arr=ndFiltered;page=ndPage;setPage=v=>ndPage=v;}
+  else if(pfx==='nd'){arr=ndFiltered;page=ndPage;setPage=v=>ndPage=v;}
+  else{arr=rjFiltered;page=rjPage;setPage=v=>rjPage=v;}
   const pages=Math.max(1,Math.ceil(arr.length/PS));
   setPage(Math.max(1,Math.min(pages,page+dir)));
   if(pfx==='ov')renderOvTable();
   else if(pfx==='py')renderPyTable();
   else if(pfx==='dt')renderDtTable();
-  else renderNdTable();
+  else if(pfx==='nd')renderNdTable();
+  else renderRjTable();
 }
+
+function renderRejected(){
+  const city=document.getElementById('rj-city').value;
+  const cat=document.getElementById('rj-cat').value;
+  const ins=document.getElementById('rj-ins').value;
+  const type=document.getElementById('rj-type').value;
+  rjFiltered=ALL.filter(r=>{
+    if(r.status!=='Clinically rejected'&&r.status!=='Financially rejected')return false;
+    if(city&&r.city!==city)return false;
+    if(cat&&r.category!==cat)return false;
+    if(ins&&r.insurer!==ins)return false;
+    if(type&&r.status!==type)return false;
+    return true;
+  });
+  rjPage=1;
+  const clin=rjFiltered.filter(r=>r.status==='Clinically rejected');
+  const fin=rjFiltered.filter(r=>r.status==='Financially rejected');
+
+  // ATS-based loss
+  const catGroups={};
+  rjFiltered.forEach(r=>{
+    const c=r.category||'Unknown';
+    if(!catGroups[c])catGroups[c]={clin:0,fin:0};
+    if(r.status==='Clinically rejected')catGroups[c].clin++;
+    else catGroups[c].fin++;
+  });
+  let totalLoss=0,totalNet=0,clinLoss=0,finLoss=0;
+  Object.entries(catGroups).forEach(([cat,g])=>{
+    const ats=ATS[cat]||{loan:0};
+    const total=g.clin+g.fin;
+    g.atsLoan=ats.loan*total;
+    g.atsNet=Math.round(g.atsLoan*0.882);
+    g.clinLoss=ats.loan*g.clin;
+    g.finLoss=ats.loan*g.fin;
+    totalLoss+=g.atsLoan;
+    totalNet+=g.atsNet;
+    clinLoss+=g.clinLoss;
+    finLoss+=g.finLoss;
+  });
+
+  // KPIs
+  document.getElementById('rj-total').textContent=rjFiltered.length;
+  document.getElementById('rj-clin').textContent=clin.length;
+  document.getElementById('rj-clin-loss').textContent='loss: '+fmt(clinLoss);
+  document.getElementById('rj-fin').textContent=fin.length;
+  document.getElementById('rj-fin-loss').textContent='loss: '+fmt(finLoss);
+  document.getElementById('rj-loss').textContent=fmt(totalLoss);
+  document.getElementById('rj-net-loss').textContent=fmt(totalNet);
+
+  // ATS table
+  const maxLoss=Math.max(...Object.values(catGroups).map(g=>g.atsLoan||0),1);
+  const sorted=Object.entries(catGroups).filter(([,g])=>g.clin+g.fin>0).sort((a,b)=>b[1].atsLoan-a[1].atsLoan);
+  const atsRows=sorted.map(([cat,g])=>{
+    const ats=ATS[cat]||{loan:0};
+    const total=g.clin+g.fin;
+    const bar=(g.atsLoan/maxLoss*100).toFixed(0);
+    return '<tr style="border-bottom:1px solid #f1f5f9;">'
+      +'<td style="padding:10px 14px;font-family:Inter,sans-serif;font-weight:600;color:#0f172a;font-size:12px;">'+cat+'</td>'
+      +'<td style="padding:10px 14px;text-align:right;font-family:JetBrains Mono,monospace;font-size:12px;color:#7c3aed;font-weight:700;">'+g.clin+'</td>'
+      +'<td style="padding:10px 14px;text-align:right;font-family:JetBrains Mono,monospace;font-size:12px;color:#d97706;font-weight:700;">'+g.fin+'</td>'
+      +'<td style="padding:10px 14px;text-align:right;font-family:JetBrains Mono,monospace;font-size:12px;font-weight:700;color:#dc2626;">'+total+'</td>'
+      +'<td style="padding:10px 14px;text-align:right;font-family:JetBrains Mono,monospace;font-size:12px;color:#374151;">'+fmt(ats.loan)+'</td>'
+      +'<td style="padding:10px 14px;text-align:right;font-family:JetBrains Mono,monospace;font-size:12px;font-weight:700;color:#d97706;">'+fmt(g.atsLoan)+'</td>'
+      +'<td style="padding:10px 14px;text-align:right;font-family:JetBrains Mono,monospace;font-size:12px;color:#0d9488;">'+fmt(g.atsNet)+'</td>'
+      +'<td style="padding:10px 14px;"><div style="background:#f1f5f9;border-radius:3px;height:6px;"><div style="width:'+bar+'%;background:linear-gradient(90deg,#7c3aed,#dc2626);height:100%;border-radius:3px;"></div></div></td>'
+      +'</tr>';
+  });
+  // Total row
+  const tfootRow='<tr style="background:#f8fafc;">'
+    +'<td style="padding:10px 14px;font-family:Inter,sans-serif;font-weight:700;color:#0f172a;font-size:12px;">TOTAL</td>'
+    +'<td style="padding:10px 14px;text-align:right;font-family:JetBrains Mono,monospace;font-size:12px;color:#7c3aed;font-weight:700;">'+clin.length+'</td>'
+    +'<td style="padding:10px 14px;text-align:right;font-family:JetBrains Mono,monospace;font-size:12px;color:#d97706;font-weight:700;">'+fin.length+'</td>'
+    +'<td style="padding:10px 14px;text-align:right;font-family:JetBrains Mono,monospace;font-size:12px;font-weight:700;color:#dc2626;">'+rjFiltered.length+'</td>'
+    +'<td></td>'
+    +'<td style="padding:10px 14px;text-align:right;font-family:JetBrains Mono,monospace;font-size:12px;font-weight:700;color:#d97706;">'+fmt(totalLoss)+'</td>'
+    +'<td style="padding:10px 14px;text-align:right;font-family:JetBrains Mono,monospace;font-size:12px;font-weight:700;color:#0d9488;">'+fmt(totalNet)+'</td>'
+    +'<td></td></tr>';
+  document.getElementById('rj-ats-tbody').innerHTML=atsRows.join('');
+  document.getElementById('rj-ats-tfoot').innerHTML=tfootRow;
+
+  // Charts
+  if(charts.rjType)charts.rjType.destroy();
+  charts.rjType=new Chart(document.getElementById('rj-type-chart'),{
+    type:'doughnut',
+    data:{labels:['Clinically Rejected','Financially Rejected'],datasets:[{data:[clin.length,fin.length],backgroundColor:['#7c3aed','#f59e0b'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#94a3b8',font:{size:10},boxWidth:10}},datalabels:{display:false}}}
+  });
+  const cityMap={};rjFiltered.forEach(r=>{if(r.city)cityMap[r.city]=(cityMap[r.city]||0)+1;});
+  const ctys=Object.entries(cityMap).sort((a,b)=>b[1]-a[1]);
+  if(charts.rjCity)charts.rjCity.destroy();
+  charts.rjCity=new Chart(document.getElementById('rj-city-chart'),{
+    type:'bar',data:{labels:ctys.map(([c])=>c),datasets:[{data:ctys.map(([,n])=>n),backgroundColor:'rgba(220,38,38,.75)',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:true,anchor:'end',align:'end',color:'#374151',font:{size:10,weight:'700'},formatter:v=>v}},scales:{x:{ticks:{color:'#94a3b8',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#94a3b8',font:{size:10}},grid:{color:'rgba(0,0,0,.04)'}}}}
+  });
+
+  renderRjTable();
+}
+
+function renderRjTable(){
+  const sd=[...rjFiltered].sort((a,b)=>{
+    const av=a[rjSort]??'',bv=b[rjSort]??'';
+    return(av<bv?-1:av>bv?1:0)*(rjAsc?1:-1);
+  });
+  const total=sd.length,pages=Math.max(1,Math.ceil(total/PS)),start=(rjPage-1)*PS;
+  document.getElementById('rj-cnt').textContent=total+' records';
+  document.getElementById('rj-pg-info').textContent='Page '+rjPage+' of '+pages;
+  document.getElementById('rj-prev').disabled=rjPage<=1;
+  document.getElementById('rj-next').disabled=rjPage>=pages;
+  document.getElementById('rj-tbody').innerHTML=sd.slice(start,start+PS).map(r=>{
+    const ats=ATS[r.category]||{loan:0};
+    const isClin=r.status==='Clinically rejected';
+    return '<tr>'
+      +'<td style="font-family:Inter,sans-serif;font-weight:500;color:#0f172a;">'+r.patient+'</td>'
+      +'<td title="'+r.hospital+'">'+(r.hospital||'—').slice(0,26)+'</td>'
+      +'<td>'+r.city+'</td>'
+      +'<td title="'+r.insurer+'">'+(r.insurer||'—').slice(0,20)+'</td>'
+      +'<td>'+r.category+'</td>'
+      +'<td><span class="status-pill '+(isClin?'s-clinrej':'s-finrej')+'">'+(isClin?'Clin. Rejected':'Fin. Rejected')+'</span></td>'
+      +'<td>'+r.posted+'</td>'
+      +'<td>'+fmt(r.bill)+'</td>'
+      +'<td style="color:#7c3aed;font-weight:600;">'+fmt(ats.loan)+'</td>'
+      +'<td style="color:#0d9488;font-weight:600;">'+fmt(Math.round(ats.loan*0.882))+'</td>'
+      +'</tr>';
+  }).join('');
+}
+function sortRj(col){if(rjSort===col)rjAsc=!rjAsc;else{rjSort=col;rjAsc=false;}renderRjTable();}
 
 function showTab(tab){
   // tab IDs: tab-overview, tab-payment, tab-dispatch, tab-notdone
-  const tabMap={overview:'tab-overview',payment:'tab-payment',dispatch:'tab-dispatch',notdone:'tab-notdone'};
+  const tabMap={overview:'tab-overview',payment:'tab-payment',dispatch:'tab-dispatch',notdone:'tab-notdone',rejected:'tab-rejected'};
   Object.values(tabMap).forEach(id=>{const el=document.getElementById(id);if(el)el.classList.add('hidden');});
   const active=document.getElementById(tabMap[tab]);if(active)active.classList.remove('hidden');
-  // Sidebar nav
-  const navMap={overview:'nav-o',payment:'nav-p',dispatch:'nav-d',notdone:'nav-n'};
+  const navMap={overview:'nav-o',payment:'nav-p',dispatch:'nav-d',notdone:'nav-n',rejected:'nav-r'};
   Object.values(navMap).forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('active');});
   const an=document.getElementById(navMap[tab]);if(an)an.classList.add('active');
-  // Mobile nav
-  const mobMap={overview:'mn-o',payment:'mn-p',dispatch:'mn-d',notdone:'mn-n'};
+  const mobMap={overview:'mn-o',payment:'mn-p',dispatch:'mn-d',notdone:'mn-n',rejected:'mn-r'};
   Object.values(mobMap).forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('active');});
   const am=document.getElementById(mobMap[tab]);if(am)am.classList.add('active');
-  // Page title
-  const titles={overview:'Overview',payment:'Payment Tracker',dispatch:'File Dispatch TAT',notdone:'Approved — Not Done'};
-  const subs={overview:'Care.fi case status · All cases',payment:'Care.fi payment TAT · 11-day rule',dispatch:'DOD to file dispatch · Hexa responsibility',notdone:'Approved by Care.fi but case not processed'};
+  const titles={overview:'Overview',payment:'Payment Tracker',dispatch:'File Dispatch TAT',notdone:'Approved — Not Done',rejected:'Rejected Analysis'};
+  const subs={overview:'Care.fi case status · All cases',payment:'Care.fi payment TAT · 11-day rule',dispatch:'DOD to file dispatch · Hexa responsibility',notdone:'Approved by Care.fi but case not processed',rejected:'ATS-based potential business loss · rejected cases'};
   const pt=document.getElementById('page-title');if(pt)pt.textContent=titles[tab]||'';
   const ps=document.getElementById('page-sub');if(ps)ps.textContent=subs[tab]||'';
   if(tab==='payment')renderPayment();
   if(tab==='dispatch')renderDispatch();
   if(tab==='notdone')renderNotDone();
+  if(tab==='rejected')renderRejected();
 }
 
 // ── CSV DOWNLOAD ──────────────────────────────────────────────────────
 function dlCSV(tab){
   let rows,filename;
   if(tab==='overview'){rows=ovFiltered;filename='carefi_overview';}
+  else if(tab==='rejected'){rows=rjFiltered;filename='carefi_rejected';}
   else if(tab==='payment'){rows=pyFiltered;filename='carefi_payment';}
   else if(tab==='dispatch'){rows=dtFiltered;filename='carefi_dispatch';}
   else{rows=ndFiltered;filename='carefi_notdone';}
