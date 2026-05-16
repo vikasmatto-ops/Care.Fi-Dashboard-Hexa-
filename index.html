@@ -292,6 +292,16 @@ table.dtbl tr.overdue-row td{background:#fff5f5;}
           <option value="HEXA">Hexa Liability</option>
           <option value="CASE NOT DONE">Case Not Done</option>
         </select>
+        <select class="sel" id="ov-status" onchange="renderOverview()">
+          <option value="">All Statuses</option>
+          <option value="Both approved">Both Approved</option>
+          <option value="Both approved but KYC pending">KYC Pending</option>
+          <option value="Financially rejected">Financially Rejected</option>
+          <option value="Clinically rejected">Clinically Rejected</option>
+          <option value="Query">Query</option>
+          <option value="UNDER PROCESS">Under Process</option>
+          <option value="No action required">No Action Required</option>
+        </select>
         <button class="btn-clr" onclick="clearFilters('ov')">&#x2715; Reset</button>
         <div class="divdr"></div>
         <button class="btn-dl primary" onclick="dlCSV('overview')">&#x2193; Download</button>
@@ -657,11 +667,13 @@ function renderOverview(){
   const cat=document.getElementById('ov-cat').value;
   const ins=document.getElementById('ov-ins').value;
   const liab=document.getElementById('ov-liab').value;
+  const statusF=document.getElementById('ov-status')?document.getElementById('ov-status').value:'';
   ovFiltered=ALL.filter(r=>{
     if(city&&r.city!==city)return false;
     if(cat&&r.category!==cat)return false;
     if(ins&&r.insurer!==ins)return false;
     if(liab&&r.liability!==liab)return false;
+    if(statusF&&r.status!==statusF)return false;
     return true;
   });
   ovPage=1;
@@ -1098,7 +1110,7 @@ function sortNd(col){if(ndSort===col)ndAsc=!ndAsc;else{ndSort=col;ndAsc=false;}r
 
 // ── SHARED ────────────────────────────────────────────────────────────
 function clearFilters(pfx){
-  ['city','cat','ins','liab','paystatus','tat','hosp','search'].forEach(s=>{const el=document.getElementById(pfx+'-'+s);if(el)el.value='';});
+  ['city','cat','ins','liab','paystatus','tat','hosp','search','status'].forEach(s=>{const el=document.getElementById(pfx+'-'+s);if(el)el.value='';});
   if(pfx==='ov')renderOverview();
   if(pfx==='py')renderPayment();
   if(pfx==='dt')renderDispatch();
