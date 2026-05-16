@@ -509,7 +509,7 @@ function tatBadge(tat){
   if(tat<=14)return'<span class="tat-warn">'+tat+'d !</span>';
   return'<span class="tat-bad">'+tat+'d &#x26A0;</span>';
 }
-function isOverdue(r){return r.liability==='CAREFI'&&r.days_since_dispatch!==null&&r.days_since_dispatch>11&&r.pay_status!=='Remit Processed';}
+function isOverdue(r){return r.liability==='CAREFI'&&r.days_since_dispatch!==null&&r.days_since_dispatch>11&&(r.pay_status==='0'||r.pay_status==='')&&(r.status==='Both approved'||r.status==='Both approved but KYC pending');}
 
 function processRows(rows){
   return rows.map(r=>({...r,
@@ -947,7 +947,7 @@ function parseRaw(raw){
       ipd:(r['IPD NO.']||'').trim(),lead:(r['LEAD ID']||'').trim(),carefi_id:(r['CAREFI ID']||'').trim(),
       posted:postDt?postDt.toLocaleDateString('en-IN',{day:'2-digit',month:'2-digit',year:'numeric'}):'',
       status:(r['Care.fi Status']||'').trim(),
-      liability:liab==='HEXA'?'HEXA':liab==='CAREFI'?'CAREFI':liab==='CASE NOT DONE'?'CASE NOT DONE':liab,
+      liability:liab.includes('HEXA')?'HEXA':liab.includes('CAREFI')||liab.includes('CARE')?'CAREFI':liab.includes('NOT DONE')||liab.includes('CASE NOT')?'CASE NOT DONE':liab,
       patient:(r['PATIENT NAME']||'').trim(),insurer:(r['INSURANCE NAME']||'').trim(),
       tpa:(r['TPA NAME']||'').trim(),hospital:(r['HOSPITAL NAME']||'').trim(),
       city:cityMap[city]||city,category:catMap[cat]||cat,
