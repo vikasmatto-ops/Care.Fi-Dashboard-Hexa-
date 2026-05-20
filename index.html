@@ -695,7 +695,7 @@ function liabPill(l){
   return'<span class="status-pill s-nar">'+l+'</span>';
 }
 function payPill(r){
-  if(r.pay_status==='Remit Processed')return'<span class="status-pill p-paid">Remit Processed</span>';
+  if(r.pay_status.toLowerCase().includes('remit'))return'<span class="status-pill p-paid">Remit Processed</span>';
   if(r.days_since_dispatch!==null&&r.days_since_dispatch>11)return'<span class="status-pill p-overdue">OVERDUE</span>';
   if(r.dispatch)return'<span class="status-pill p-pending">Pending</span>';
   return'<span class="status-pill s-nar">No Dispatch</span>';
@@ -706,7 +706,7 @@ function tatBadge(tat){
   if(tat<=14)return'<span class="tat-warn">'+tat+'d !</span>';
   return'<span class="tat-bad">'+tat+'d &#x26A0;</span>';
 }
-function isOverdue(r){return r.liability==='CAREFI'&&r.days_since_dispatch!==null&&r.days_since_dispatch>11&&(r.pay_status==='0'||r.pay_status==='')&&(r.status==='Both approved'||r.status==='Both approved but KYC pending');}
+function isOverdue(r){const paid=r.pay_status.toLowerCase().includes('remit');return r.liability==='CAREFI'&&r.days_since_dispatch!==null&&r.days_since_dispatch>11&&!paid&&(r.status==='Both approved'||r.status==='Both approved but KYC pending');}
 
 function processRows(rows){
   return rows.map(r=>({...r,
@@ -797,7 +797,7 @@ function renderOverview(){
   // CAREFI cases: net = loan * 0.882 (Care.fi finances, pays Hexa minus 10%+GST)
   // HEXA cases: net = loan ONLY if Payment Status = 'Remit Processed' (customer paid Care.fi, Care.fi paid Hexa)
   const netCarefi=approved.filter(r=>r.liability==='CAREFI').reduce((s,r)=>s+r.net,0);
-  const netHexa=approved.filter(r=>r.liability==='HEXA'&&r.pay_status==='Remit Processed').reduce((s,r)=>s+r.loan,0);
+  const netHexa=approved.filter(r=>r.liability==='HEXA'&&r.pay_status.toLowerCase().includes('remit')).reduce((s,r)=>s+r.loan,0);
   const totalNet=netCarefi+netHexa;
   document.getElementById('ov-total').textContent=fd.length;
   document.getElementById('ov-approved').textContent=approved.length;
@@ -945,18 +945,18 @@ function renderPayment(){
     if(cat&&r.category!==cat)return false;
     if(ins&&r.insurer!==ins)return false;
     if(srch&&!(r.hospital||'').toLowerCase().includes(srch)&&!(r.patient||'').toLowerCase().includes(srch))return false;
-    if(ps==='paid'&&r.pay_status!=='Remit Processed')return false;
+    if(ps==='paid'&&!r.pay_status.toLowerCase().includes('remit'))return false;
     if(ps==='overdue'&&!r._isOverdue)return false;
-    if(ps==='pending'&&(r.pay_status==='Remit Processed'||r._isOverdue))return false;
+    if(ps==='pending'&&(r.pay_status.toLowerCase().includes('remit')||r._isOverdue))return false;
     return true;
   });
   pyPage=1;
 
   // CAREFI stats
   const carefiRows=pyFiltered.filter(r=>r.liability==='CAREFI');
-  const paid=carefiRows.filter(r=>r.pay_status==='Remit Processed');
+  const paid=carefiRows.filter(r=>r.pay_status.toLowerCase().includes('remit'));
   const overdue=carefiRows.filter(r=>r._isOverdue);
-  const pending=carefiRows.filter(r=>r.pay_status!=='Remit Processed'&&!r._isOverdue&&r.dispatch);
+  const pending=carefiRows.filter(r=>!r.pay_status.toLowerCase().includes('remit')&&!r._isOverdue&&r.dispatch);
   document.getElementById('py-total').textContent=carefiRows.length;
   document.getElementById('py-paid').textContent=paid.length;
   document.getElementById('py-paid-amt').textContent=fmt(paid.reduce((s,r)=>s+r.loan,0));
@@ -968,8 +968,8 @@ function renderPayment(){
   // HEXA stats
   const hexaRows=ALL.filter(r=>r.liability==='HEXA'&&
     (r.status==='Both approved'||r.status==='Both approved but KYC pending')&&r.loan>0);
-  const hexaPaid=hexaRows.filter(r=>r.pay_status==='Remit Processed');
-  const hexaPending=hexaRows.filter(r=>r.pay_status!=='Remit Processed');
+  const hexaPaid=hexaRows.filter(r=>r.pay_status.toLowerCase().includes('remit'));
+  const hexaPending=hexaRows.filter(r=>!r.pay_status.toLowerCase().includes('remit'));
   document.getElementById('hx-total').textContent=hexaRows.length;
   document.getElementById('hx-paid').textContent=hexaPaid.length;
   document.getElementById('hx-paid-amt').textContent=fmt(hexaPaid.reduce((s,r)=>s+r.loan,0));
@@ -1436,7 +1436,7 @@ function parseRaw(raw){
       bill:Math.round(bill),loan:Math.round(loan),net:finalLiab==='HEXA'?Math.max(0,Math.round(loan)-5900):Math.round(loan*0.882),
       dod:dodDt?fmtD(dodDt):'',dispatch:dispDt?fmtD(dispDt):'',
       dispatch_tat,days_since_dispatch,
-      pay_status:(r['Payment Status']||'').trim()
+      pay_status:(r['Payment Status']||r['Payment Status ']||'').trim()
     };
   });
 }
