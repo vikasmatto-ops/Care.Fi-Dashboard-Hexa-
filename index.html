@@ -1457,17 +1457,11 @@ function parseRaw(raw){
     const raw=Papa.parse(txt,{header:true,skipEmptyLines:true}).data;
     if(!raw||raw.length<10)return;
     const rows=parseRaw(raw);
-    // Sanity check: overdue count should not exceed 50% of CAREFI cases
-    const carefiRows=rows.filter(r=>r.liability==='CAREFI');
-    const overdueRows=rows.filter(r=>r._isOverdue||isOverdue(r));
-    if(overdueRows.length>carefiRows.length*0.5){
-      console.warn('Live data sanity check failed - overdue count suspicious, using snapshot');
-      return;
-    }
     init(rows);
     document.getElementById('live-title').textContent='Live · Google Sheets';
     document.getElementById('live-sub').textContent=raw.length+' rows · '+new Date().toLocaleTimeString('en-IN');
     const mlt=document.getElementById('mob-live-txt');if(mlt)mlt.textContent='Live · '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    console.log('Live data loaded:',raw.length,'rows',ALL.length,'processed');
   }catch(e){console.warn('Live fetch:',e.message);}
 })();
 
