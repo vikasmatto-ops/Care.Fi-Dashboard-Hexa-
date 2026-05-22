@@ -865,8 +865,15 @@ function renderOverview(){
   const yms=Object.keys(mMap).sort();
   const mNms={};['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].forEach((m,i)=>mNms[String(i+1).padStart(2,'0')]=m);
   const ymLabels=yms.map(y=>{const[yr,mo]=y.split('-');return mNms[mo]+' '+yr.slice(2);});
-  if(charts.monthly)charts.monthly.destroy();
-  charts.monthly=new Chart(document.getElementById('monthly-growth-chart'),{
+  if(charts.monthly){charts.monthly.destroy();charts.monthly=null;}
+  const mgEl=document.getElementById('monthly-growth-chart');
+  if(!mgEl)return;
+  // Replace canvas to fully reset context
+  const mgParent=mgEl.parentNode;
+  const mgNew=document.createElement('canvas');
+  mgNew.id='monthly-growth-chart';
+  mgParent.replaceChild(mgNew,mgEl);
+  charts.monthly=new Chart(mgNew,{
     type:'bar',
     data:{
       labels:ymLabels,
