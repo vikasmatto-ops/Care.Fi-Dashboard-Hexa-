@@ -782,25 +782,43 @@ function init(rows){
     document.getElementById('loading').style.display='none';
     document.getElementById('app').style.display='flex';
   } else {
-    // Live data reload - re-render only the currently visible tab
-    const activeTab=document.querySelector('[id^="tab-"]:not(.hidden)');
-    const tabName=activeTab?activeTab.id.replace('tab-',''):'overview';
-    if(tabName==='overview')renderOverview();
-    else if(tabName==='payment')renderPayment();
-    else if(tabName==='dispatch')renderDispatch();
-    else if(tabName==='notdone')renderNotDone();
-    else if(tabName==='rejected')renderRejected();
-    // Update badges
+    // Live data reload - only update KPIs, badges and table - NO chart redraw
+    // Charts will update naturally next time user changes a filter
     const overdue=ALL.filter(r=>r._isOverdue);
     const notDone=ALL.filter(r=>r.status==='Both approved'&&r.liability==='CASE NOT DONE');
     const rejected=ALL.filter(r=>r.status==='Clinically rejected'||r.status==='Financially rejected');
     const dispatched=ALL.filter(r=>r.dispatch&&(r.liability==='CAREFI'||r.liability==='HEXA'));
+    // Update all badges
     document.getElementById('badge-total').textContent=ALL.length;
     document.getElementById('badge-overdue').textContent=overdue.length;
     document.getElementById('badge-dispatch').textContent=dispatched.filter(r=>r._tatClass==='bad').length;
     document.getElementById('badge-notdone').textContent=notDone.length;
     const brj=document.getElementById('badge-rejected');if(brj)brj.textContent=rejected.length;
     const mu=document.getElementById('mob-badge-u');if(mu)mu.textContent=ALL.length;
+    // Update overview KPI numbers without touching charts
+    const fd=ALL; // use all data for KPI update
+    const approved=fd.filter(r=>r.status==='Both approved'||r.status==='Both approved but KYC pending');
+    const totalBill=approved.reduce((s,r)=>s+r.bill,0);
+    const totalLoan=approved.reduce((s,r)=>s+r.loan,0);
+    const avgDisc=totalBill?((totalBill-totalLoan)/totalBill*100).toFixed(1):0;
+    const netCarefi=approved.filter(r=>r.liability==='CAREFI').reduce((s,r)=>s+r.net,0);
+    const netHexaRows=approved.filter(r=>r.liability==='HEXA'&&r.pay_status.toLowerCase().includes('remit'));
+    const netHexa=netHexaRows.reduce((s,r)=>s+Math.max(0,r.loan-5900),0);
+    document.getElementById('ov-total').textContent=fd.length;
+    document.getElementById('ov-approved').textContent=approved.length;
+    document.getElementById('ov-approved-pct').textContent=fd.length?((approved.length/fd.length)*100).toFixed(0)+'% approval rate':'--';
+    document.getElementById('ov-rejected').textContent=fd.filter(r=>r.status==='Financially rejected'||r.status==='Clinically rejected').length;
+    document.getElementById('ov-query').textContent=fd.filter(r=>r.status==='Query'||r.status==='UNDER PROCESS').length;
+    document.getElementById('ov-hexa').textContent=fd.filter(r=>r.liability==='HEXA').length;
+    document.getElementById('ov-bill').textContent=fmt(totalBill);
+    document.getElementById('ov-loan').textContent=fmt(totalLoan);
+    document.getElementById('ov-discount').textContent='avg '+avgDisc+'% less than bill';
+    document.getElementById('ov-net').textContent=fmt(netCarefi+netHexa);
+    // Update panic box
+    document.getElementById('panic-count').textContent=overdue.length;
+    document.getElementById('panic-loan').textContent=fmt(overdue.reduce((s,r)=>s+r.loan,0));
+    document.getElementById('panic-net').textContent=fmt(overdue.reduce((s,r)=>s+r.net,0));
+    document.getElementById('panic-box').style.display=overdue.length>0?'block':'none';
   }
 }
 
