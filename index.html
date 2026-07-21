@@ -343,14 +343,15 @@ table.dt tr.row-warn td{background:#fffbeb;}
     <button class="btn-sm btn-red" onclick="QR.clearFilters()">&#x2715; Reset</button><div class="divdr"></div>
     <button class="btn-sm btn-purple" onclick="QR.download()">&#x2193; Download</button>
   </div>
-  <div class="kpi-row" style="grid-template-columns:repeat(3,1fr);">
+  <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);">
     <div class="kpi amber"><div class="kpi-label">Query Cases</div><div class="kpi-val" id="qr-total" style="color:#d97706">--</div><div class="kpi-sub">pending resolution</div></div>
+    <div class="kpi red"><div class="kpi-label">Outstanding Queries</div><div class="kpi-val" id="qr-outstanding" style="color:#991b1b">--</div><div class="kpi-sub">raised, no reply yet</div></div>
     <div class="kpi blue"><div class="kpi-label">Total Bill Amount</div><div class="kpi-val" id="qr-bill" style="font-size:20px">--</div><div class="kpi-sub">under query</div></div>
     <div class="kpi purple"><div class="kpi-label">Loan Amount</div><div class="kpi-val" id="qr-loan" style="font-size:20px;color:#7c3aed">--</div><div class="kpi-sub">Care.fi approved</div></div>
   </div>
   <div class="tbl-wrap">
     <div class="tbl-head"><div><div class="tbl-title">Query Cases — Pending Resolution</div><div class="tbl-cnt" id="qr-cnt">--</div></div><button class="btn-sm btn-purple" onclick="QR.download()">&#x2193; Download</button></div>
-    <div class="tbl-scroll"><table class="dt"><thead><tr><th onclick="QR.sort('ipd')">IPD No &#x21D5;</th><th onclick="QR.sort('carefi_id')">Care.fi ID &#x21D5;</th><th onclick="QR.sort('patient')">Patient &#x21D5;</th><th onclick="QR.sort('hospital')">Hospital &#x21D5;</th><th onclick="QR.sort('city')">City &#x21D5;</th><th onclick="QR.sort('insurer')">Insurer &#x21D5;</th><th onclick="QR.sort('category')">Category &#x21D5;</th><th onclick="QR.sort('liability')">Liability &#x21D5;</th><th onclick="QR.sort('posted')">Posted &#x21D5;</th><th onclick="QR.sort('bill')">Bill Amt &#x21D5;</th><th onclick="QR.sort('loan')">Loan Amt &#x21D5;</th><th onclick="QR.sort('remarks')">Remarks &#x21D5;</th></tr></thead><tbody id="qr-tbody"></tbody></table></div>
+    <div class="tbl-scroll"><table class="dt"><thead><tr><th onclick="QR.sort('ipd')">IPD No &#x21D5;</th><th onclick="QR.sort('carefi_id')">Care.fi ID &#x21D5;</th><th onclick="QR.sort('patient')">Patient &#x21D5;</th><th onclick="QR.sort('hospital')">Hospital &#x21D5;</th><th onclick="QR.sort('city')">City &#x21D5;</th><th onclick="QR.sort('insurer')">Insurer &#x21D5;</th><th onclick="QR.sort('category')">Category &#x21D5;</th><th onclick="QR.sort('liability')">Liability &#x21D5;</th><th onclick="QR.sort('posted')">Posted &#x21D5;</th><th onclick="QR.sort('bill')">Bill Amt &#x21D5;</th><th onclick="QR.sort('loan')">Loan Amt &#x21D5;</th><th onclick="QR.sort('query_raised')">Raised &#x21D5;</th><th onclick="QR.sort('query_outstanding_days')">Days Outstanding &#x21D5;</th><th onclick="QR.sort('remarks')">Remarks &#x21D5;</th></tr></thead><tbody id="qr-tbody"></tbody></table></div>
     <div class="pg"><div id="qr-pg">Page 1 of 1</div><div style="display:flex;gap:6px;"><button class="pg-btn" id="qr-prev" onclick="QR.page(-1)" disabled>&#x2190;</button><button class="pg-btn" id="qr-next" onclick="QR.page(1)">&#x2192;</button></div></div>
   </div>
 </div>
@@ -385,6 +386,7 @@ const H={
   pillLiab(l){const m={CAREFI:'pill-blue',HEXA:'pill-teal','CASE NOT DONE':'pill-red'};const lab={CAREFI:'Care.fi',HEXA:'Hexa','CASE NOT DONE':'Not Done'};return`<span class="pill ${m[l]||'pill-gray'}">${lab[l]||l}</span>`;},
   pillPay(r){if(H.isPaid(r))return'<span class="pill pill-green">Remit Processed</span>';if(H.isOverdue(r))return'<span class="pill pill-overdue">OVERDUE</span>';if(r.dispatch)return'<span class="pill pill-amber">Pending</span>';return'<span class="pill pill-gray">No Dispatch</span>';},
   tatBadge(t){if(t===null||t===undefined)return'<span class="pill pill-gray">—</span>';if(t<=7)return`<span class="pill pill-green">${t}d ✓</span>`;if(t<=14)return`<span class="pill pill-amber">${t}d !</span>`;return`<span class="pill pill-red">${t}d ⚠</span>`;},
+  queryBadge(r){if(r.query_replied)return'<span class="pill pill-green">Replied</span>';if(r.query_outstanding_days===null||r.query_outstanding_days===undefined)return'<span class="pill pill-gray">—</span>';const d=r.query_outstanding_days;if(d<=3)return`<span class="pill pill-amber">${d}d</span>`;if(d<=7)return`<span class="pill pill-red">${d}d</span>`;return`<span class="pill pill-overdue">${d}d ⚠</span>`;},
   csv(rows,cols,filename){const hdr=cols.map(c=>c.label);const body=rows.map(r=>cols.map(c=>{const v=String(r[c.key]||'').replace(/"/g,'""');return v.includes(',')||v.includes('"')?`"${v}"`:v;}).join(','));const blob=new Blob([[hdr.join(','),...body].join('\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename+'_'+new Date().toISOString().slice(0,10)+'.csv';a.click();},
   sel(id){return document.getElementById(id);},
   txt(id,v){const e=document.getElementById(id);if(e)e.textContent=v;},
@@ -641,6 +643,7 @@ const QR=new class extends Page{
     const srch=(H.sel('qr-search')?.value||'').toLowerCase();
     return Data.filter(r=>{
       if(r.status!=='Query')return false;
+      if(!(r.bill>0&&r.loan>0))return false;
       if(!FB.applyCommon(r,'qr'))return false;
       if(srch&&!`${r.patient}${r.hospital}`.toLowerCase().includes(srch))return false;
       return true;
@@ -648,16 +651,17 @@ const QR=new class extends Page{
   }
   render(){
     const fd=this._filtered();this.setRows(fd);
-    H.txt('qr-total',fd.length);H.txt('qr-bill',H.fmt(fd.reduce((s,r)=>s+r.bill,0)));H.txt('qr-loan',H.fmt(fd.reduce((s,r)=>s+r.loan,0)));H.txt('qr-cnt',fd.length+' records');
+    const outstanding=fd.filter(r=>r.query_raised&&!r.query_replied);
+    H.txt('qr-total',fd.length);H.txt('qr-outstanding',outstanding.length);H.txt('qr-bill',H.fmt(fd.reduce((s,r)=>s+r.bill,0)));H.txt('qr-loan',H.fmt(fd.reduce((s,r)=>s+r.loan,0)));H.txt('qr-cnt',fd.length+' records');
     this.renderPage();
   }
   renderPage(){
     this.updatePager('qr');
-    H.html('qr-tbody',this.getPage().map(r=>`<tr><td>${r.ipd||'—'}</td><td>${r.carefi_id||'—'}</td><td style="font-family:Inter,sans-serif;font-weight:500;color:#0f172a;">${r.patient||'—'}</td><td title="${r.hospital||''}">${(r.hospital||'—').slice(0,26)}</td><td>${r.city||'—'}</td><td title="${r.insurer||''}">${(r.insurer||'—').slice(0,22)}</td><td>${r.category||'—'}</td><td>${H.pillLiab(r.liability)}</td><td>${r.posted||'—'}</td><td>${r.bill?H.fmt(r.bill):'—'}</td><td>${r.loan?H.fmt(r.loan):'—'}</td><td style="font-family:Inter,sans-serif;color:#64748b;font-size:11px;">${r.remarks||'—'}</td></tr>`).join(''));
+    H.html('qr-tbody',this.getPage().map(r=>`<tr><td>${r.ipd||'—'}</td><td>${r.carefi_id||'—'}</td><td style="font-family:Inter,sans-serif;font-weight:500;color:#0f172a;">${r.patient||'—'}</td><td title="${r.hospital||''}">${(r.hospital||'—').slice(0,26)}</td><td>${r.city||'—'}</td><td title="${r.insurer||''}">${(r.insurer||'—').slice(0,22)}</td><td>${r.category||'—'}</td><td>${H.pillLiab(r.liability)}</td><td>${r.posted||'—'}</td><td>${r.bill?H.fmt(r.bill):'—'}</td><td>${r.loan?H.fmt(r.loan):'—'}</td><td>${r.query_raised||'—'}</td><td>${H.queryBadge(r)}</td><td style="font-family:Inter,sans-serif;color:#64748b;font-size:11px;">${r.remarks||'—'}</td></tr>`).join(''));
   }
   clearFilters(){FB.clear('qr');this.render();}
   sort(col){super.sort(col);this.renderPage();}
-  download(){H.csv(this._rows,[{key:'ipd',label:'IPD No'},{key:'carefi_id',label:'Care.fi ID'},{key:'patient',label:'Patient'},{key:'hospital',label:'Hospital'},{key:'city',label:'City'},{key:'insurer',label:'Insurer'},{key:'category',label:'Category'},{key:'liability',label:'Liability'},{key:'posted',label:'Posted Date'},{key:'bill',label:'Bill Amount'},{key:'loan',label:'Loan Amount'},{key:'remarks',label:'Remarks'}],'carefi_query_cases');}
+  download(){H.csv(this._rows,[{key:'ipd',label:'IPD No'},{key:'carefi_id',label:'Care.fi ID'},{key:'patient',label:'Patient'},{key:'hospital',label:'Hospital'},{key:'city',label:'City'},{key:'insurer',label:'Insurer'},{key:'category',label:'Category'},{key:'liability',label:'Liability'},{key:'posted',label:'Posted Date'},{key:'bill',label:'Bill Amount'},{key:'loan',label:'Loan Amount'},{key:'query_raised',label:'Query Raised'},{key:'query_replied',label:'Query Replied'},{key:'query_outstanding_days',label:'Days Outstanding'},{key:'remarks',label:'Remarks'}],'carefi_query_cases');}
 }();
 
 // ── APP ──────────────────────────────────────────────────────────────────
@@ -684,7 +688,7 @@ const App={
     const dispBad=all.filter(r=>r.dispatch&&r.dod&&H.tatClass(r.dispatch_tat)==='bad');
     const notDone=all.filter(r=>r.status==='Both approved'&&r.liability==='CASE NOT DONE');
     const rejected=all.filter(r=>r.status==='Clinically rejected'||r.status==='Financially rejected');
-    const queryC=all.filter(r=>r.status==='Query');
+    const queryC=all.filter(r=>r.status==='Query'&&r.bill>0&&r.loan>0);
     H.txt('bdg-total',all.length);H.txt('bdg-overdue',overdue.length);H.txt('bdg-dispatch',dispBad.length);H.txt('bdg-notdone',notDone.length);H.txt('bdg-rejected',rejected.length);H.txt('bdg-query',queryC.length);
   },
   init(rows){
@@ -713,6 +717,9 @@ function parseRaw(raw){
     const daysPost=postDt?Math.round((today-postDt)/86400000):null;
     const ym=postDt?`${postDt.getFullYear()}-${String(postDt.getMonth()+1).padStart(2,'0')}`:'';
     const finalCity=cityMap[city]||city,finalCat=catMap[cat]||cat;
+    const queryRaisedDt=parseD(r['Query raised']||r['Query Raised']||r['Query']||r['Query raise date']);
+    const queryRepliedDt=parseD(r['Query replied date']||r['Query Replied Date']||r['Query reply done date']||r['Query Reply Done Date']||r['Query Reply']);
+    const queryOutstandingDays=(queryRaisedDt&&!queryRepliedDt)?Math.round((today-queryRaisedDt)/86400000):null;
     return{
       ipd:(r['IPD NO.']||r['Unnamed: 0']||'').trim(),carefi_id:(r['CAREFI ID']||'').trim(),
       posted:fmtD(postDt),ym:ym&&ym>='2025-06'?ym:'',
@@ -724,7 +731,8 @@ function parseRaw(raw){
       net:liab==='HEXA'?Math.round(loan):Math.round(loan*0.882),
       dod:fmtD(dodDt),dispatch:fmtD(dispDt),
       dispatch_tat:dispTat,days_since_dispatch:daysDsp,days_since_posted:daysPost,
-      pay_status:pay,remarks:(r['Remarks']||'').trim()
+      pay_status:pay,remarks:(r['Remarks']||'').trim(),
+      query_raised:fmtD(queryRaisedDt),query_replied:fmtD(queryRepliedDt),query_outstanding_days:queryOutstandingDays
     };
   });
 }
