@@ -448,15 +448,19 @@ const OV=new class extends Page{
   }
   _filtered(){
     const status=H.sel('ov-status')?.value||'';
+    const liab=H.sel('ov-liab')?.value||'';
     return Data.filter(r=>{
       if(!FB.applyCommon(r,'ov'))return false;
       if(status){if(status==='Financially rejected'&&r.status!=='Financially rejected'&&r.status!=='Clinically rejected')return false;if(status!=='Financially rejected'&&r.status!==status)return false;}
+      // A liability of CAREFI/HEXA only counts as a real case when there's an actual bill & loan value —
+      // rows with the liability label but no money attached aren't genuine cases under that liability.
+      if((liab==='CAREFI'||liab==='HEXA')&&!(r.bill>0&&r.loan>0))return false;
       return true;
     });
   }
   render(){
     const fd=this._filtered();this.setRows(fd);
-    const approved=fd.filter(H.isApproved),rejected=fd.filter(r=>r.status==='Financially rejected'||r.status==='Clinically rejected'),query=fd.filter(r=>r.status==='Query'||r.status==='UNDER PROCESS'),hexa=fd.filter(r=>r.liability==='HEXA');
+    const approved=fd.filter(H.isApproved),rejected=fd.filter(r=>r.status==='Financially rejected'||r.status==='Clinically rejected'),query=fd.filter(r=>r.status==='Query'||r.status==='UNDER PROCESS'),hexa=fd.filter(r=>r.liability==='HEXA'&&r.bill>0&&r.loan>0);
     H.txt('ov-total',fd.length.toLocaleString());H.txt('ov-approved',approved.length);H.txt('ov-app-pct',fd.length?((approved.length/fd.length)*100).toFixed(0)+'% approval':'click to filter');H.txt('ov-rejected',rejected.length);H.txt('ov-query',query.length);H.txt('ov-hexa',hexa.length);
     // Financial totals: any case with a real bill & loan value counts, irrespective of Care.fi Status (col E) —
     // a HEXA-liability case can be Financially/Clinically rejected by Care.fi yet still carry a real bill/loan
