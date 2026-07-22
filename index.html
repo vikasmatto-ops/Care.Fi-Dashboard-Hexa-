@@ -173,7 +173,7 @@ table.dt tr.row-warn td{background:#fffbeb;}
     <div class="kpi teal clickable" id="kpi-hexa" onclick="OV.kpiFilter('hexa')"><div class="kpi-label">Hexa Liability &#x1F4CC;</div><div class="kpi-val" id="ov-hexa" style="color:#0d9488">--</div><div class="kpi-sub">click to filter</div></div>
   </div>
   <div class="three-col">
-    <div class="kpi blue"><div class="kpi-label">Total Bill Amount</div><div class="kpi-val" id="ov-bill" style="font-size:20px">--</div><div class="kpi-sub">approved cases</div></div>
+    <div class="kpi blue"><div class="kpi-label">Total Bill Amount</div><div class="kpi-val" id="ov-bill" style="font-size:20px">--</div><div class="kpi-sub">bill &amp; loan present</div></div>
     <div class="kpi purple"><div class="kpi-label">Loan Approved</div><div class="kpi-val" id="ov-loan" style="font-size:20px;color:#7c3aed">--</div><div class="kpi-sub" id="ov-disc">avg --% discount</div></div>
     <div class="kpi green"><div class="kpi-label">Net Payout</div><div class="kpi-val" id="ov-net" style="font-size:20px;color:#16a34a">--</div><div class="kpi-sub">after Care.fi fees</div></div>
   </div>
@@ -458,9 +458,13 @@ const OV=new class extends Page{
     const fd=this._filtered();this.setRows(fd);
     const approved=fd.filter(H.isApproved),rejected=fd.filter(r=>r.status==='Financially rejected'||r.status==='Clinically rejected'),query=fd.filter(r=>r.status==='Query'||r.status==='UNDER PROCESS'),hexa=fd.filter(r=>r.liability==='HEXA');
     H.txt('ov-total',fd.length.toLocaleString());H.txt('ov-approved',approved.length);H.txt('ov-app-pct',fd.length?((approved.length/fd.length)*100).toFixed(0)+'% approval':'click to filter');H.txt('ov-rejected',rejected.length);H.txt('ov-query',query.length);H.txt('ov-hexa',hexa.length);
-    const bill=approved.reduce((s,r)=>s+r.bill,0),loan=approved.reduce((s,r)=>s+r.loan,0),disc=bill?((bill-loan)/bill*100).toFixed(1):0;
-    const netCF=approved.filter(r=>r.liability==='CAREFI').reduce((s,r)=>s+r.net,0);
-    const netHX=approved.filter(r=>r.liability==='HEXA'&&H.isPaid(r)).reduce((s,r)=>s+r.loan,0);
+    // Financial totals: any case with a real bill & loan value counts, irrespective of Care.fi Status (col E) —
+    // a HEXA-liability case can be Financially/Clinically rejected by Care.fi yet still carry a real bill/loan
+    // because Hexa took on the liability itself once Care.fi rejected it.
+    const valid=fd.filter(r=>r.bill>0&&r.loan>0);
+    const bill=valid.reduce((s,r)=>s+r.bill,0),loan=valid.reduce((s,r)=>s+r.loan,0),disc=bill?((bill-loan)/bill*100).toFixed(1):0;
+    const netCF=valid.filter(r=>r.liability==='CAREFI').reduce((s,r)=>s+r.net,0);
+    const netHX=valid.filter(r=>r.liability==='HEXA'&&H.isPaid(r)).reduce((s,r)=>s+r.loan,0);
     H.txt('ov-bill',H.fmt(bill));H.txt('ov-loan',H.fmt(loan));H.txt('ov-disc','avg '+disc+'% less than bill');H.txt('ov-net',H.fmt(netCF+netHX));H.txt('ov-cnt',fd.length+' records');
     this._charts(fd);this.renderPage();
   }
