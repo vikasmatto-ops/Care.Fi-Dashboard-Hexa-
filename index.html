@@ -237,7 +237,7 @@ table.dt tr.row-warn td{background:#fffbeb;}
     <button class="btn-sm btn-red" onclick="DT.clearFilters()">&#x2715; Reset</button>
   </div>
   <div id="pending-alert" style="background:linear-gradient(135deg,#78350f,#d97706);border-radius:12px;padding:16px 20px;color:#fff;">
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;opacity:.75;margin-bottom:8px;">&#x23F3; Pending Dispatch &mdash; Approved, Has DOD, File Not Yet Sent</div>
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;opacity:.75;margin-bottom:8px;">&#x23F3; Pending Dispatch &mdash; Bill &amp; Loan Confirmed, Has DOD, File Not Yet Sent</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
       <div><div style="font-size:36px;font-weight:800;letter-spacing:-1px;" id="pd-total">--</div><div style="font-size:11px;opacity:.65;font-family:'JetBrains Mono',monospace;">total pending</div></div>
       <div><div style="font-size:24px;font-weight:700;" id="pd-carefi">--</div><div style="font-size:11px;opacity:.65;font-family:'JetBrains Mono',monospace;">care.fi liability</div></div>
@@ -245,7 +245,7 @@ table.dt tr.row-warn td{background:#fffbeb;}
     </div>
   </div>
   <div class="tbl-wrap">
-    <div class="tbl-head"><div><div class="tbl-title">&#x26A0; Approved — File Not Dispatched (Has DOD)</div><div class="tbl-cnt" id="pd-cnt">--</div></div><button class="btn-sm btn-purple" onclick="DT.downloadPending()">&#x2193; Download Pending</button></div>
+    <div class="tbl-head"><div><div class="tbl-title">&#x26A0; Bill &amp; Loan Confirmed — File Not Dispatched (Has DOD)</div><div class="tbl-cnt" id="pd-cnt">--</div></div><button class="btn-sm btn-purple" onclick="DT.downloadPending()">&#x2193; Download Pending</button></div>
     <div class="tbl-scroll"><table class="dt"><thead><tr><th>Patient</th><th>Hospital</th><th>City</th><th>Insurer</th><th>Category</th><th>Liability</th><th>Status</th><th>DOD</th><th>Days Since DOD</th><th>Bill</th></tr></thead><tbody id="pd-tbody"></tbody></table></div>
   </div>
   <div class="section-label">Dispatched Cases &mdash; TAT Analysis</div>
@@ -532,7 +532,7 @@ const DT=new class extends Page{
   constructor(){super('dt');}
   _pendingRows(){
     const liab=H.sel('dt-liab')?.value||'';
-    return Data.filter(r=>{if(!H.isApproved(r))return false;if(r.liability!=='CAREFI'&&r.liability!=='HEXA')return false;if(!r.dod)return false;if(r.dispatch)return false;if(liab&&r.liability!==liab)return false;return true;});
+    return Data.filter(r=>{if(!(r.bill>0&&r.loan>0))return false;if(r.liability!=='CAREFI'&&r.liability!=='HEXA')return false;if(!r.dod)return false;if(r.dispatch)return false;if(liab&&r.liability!==liab)return false;return true;});
   }
   _dispatchedRows(){
     const tatF=H.sel('dt-tat-filter')?.value||'';
